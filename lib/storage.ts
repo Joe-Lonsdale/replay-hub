@@ -45,6 +45,17 @@ export async function objectExists(key: string): Promise<boolean> {
   }
 }
 
+export async function writeReplayObject(key: string, body: Uint8Array): Promise<void> {
+  await client().send(
+    new PutObjectCommand({
+      Bucket: process.env.R2_BUCKET,
+      Key: key,
+      Body: body,
+      ContentType: "application/octet-stream",
+    }),
+  );
+}
+
 export async function deleteObject(key: string): Promise<void> {
   if (!r2Configured()) return;
   await client().send(new DeleteObjectCommand({ Bucket: process.env.R2_BUCKET, Key: key }));

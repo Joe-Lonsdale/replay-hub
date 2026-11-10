@@ -1,6 +1,7 @@
+import { r2Configured } from "@/lib/env";
 import { getReplay, setReplayStorage } from "@/lib/repo";
 import { userFromRequest } from "@/lib/session";
-import { readLocalReplay, writeLocalReplay } from "@/lib/storage";
+import { readLocalReplay, writeLocalReplay, writeReplayObject } from "@/lib/storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -11,15 +12,16 @@ export async function PUT(request: Request, context: { params: Promise<{ id: str
   const { id } = await context.params;
   const replay = await getReplay(user.id, id);
   if (!replay) return Response.json({ error: "Replay not found." }, { status: 404 });
-  if (process.env.VERCEL) {
-    return Response.json({ error: "Upload the file straight to R2." }, { status: 400 });
+  if (process.env.VERCEL && !r2Configured()) {
+    return Response.json({ error: "Replay files need an R2 bucket on this deployment." }, { status: 400 });
   }
 
   const body = Buffer.from(await request.arrayBuffer());
   if (body.length < 1000 || body.length > 20_000_000) {
     return Response.json({ error: "Replay file size looks wrong." }, { status: 400 });
   }
-  await writeLocalReplay(user.id, id, body);
+  if (r2Configured() && replay.storageKey) await writeReplayObject(replay.storageKey, body);
+  else await writeLocalReplay(user.id, id, body);
   await setReplayStorage(user.id, id, replay.storageKey, "stored");
   return Response.json({ ok: true });
 }

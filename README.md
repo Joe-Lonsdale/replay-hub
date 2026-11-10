@@ -28,9 +28,13 @@ Without `DATABASE_URL`, accounts and stats use a Postgres database in `data/pgli
 
 Sign-in is Steam OpenID and works without an API key. A [Steam Web API key](https://steamcommunity.com/dev/apikey) fills in your persona and avatar; without it the account name is the last four digits of the Steam id. Set `APP_URL` to the exact origin you sign in from, and set `AUTH_SECRET` to a long random string before you deploy.
 
-## Helper
+## Uploading
 
-Sign in, open Settings, create a token, then:
+On Replays, drop `.replay` files. The browser reads them and uploads the stats plus the file. You do not need the listener for a game you already have.
+
+For automatic upload, sign in, open Settings, and download the listener. Double-click `ReplayLab.bat` and leave the window open. It does not need this repository. The first run may download Node. It watches `Documents\My Games\Rocket League\TAGame\Demos`, uploads what is already there, then each match as it ends. The file contains a token, so do not share it.
+
+From a checkout of this project the same listener is:
 
 ```bash
 npm run helper -- setup --token rpl_... --url http://localhost:3000
@@ -38,9 +42,9 @@ npm run helper -- scan
 npm run helper -- watch
 ```
 
-`scan` uploads what is already in `Documents\My Games\Rocket League\TAGame\Demos`. `watch` keeps going and picks up the next match when it ends. Parsing happens on your PC. Vercel only receives the stats JSON, and the `.replay` goes straight to R2.
+Parsing happens on your PC. Vercel receives the stats JSON, and the `.replay` goes to R2. `scan --force` re-reads games already uploaded. Use it once after an update that adds new events. The replay file is not uploaded again.
 
-`scan --force` re-reads games the helper already uploaded. Use it once after an update that adds new events. The replay file is not uploaded again.
+Manual uploads of a few MB work without extra storage setup. Larger ones go straight to R2, which needs a bucket CORS rule: origin is the site URL, method `PUT`, allowed header `content-type`. The listener does not use that rule.
 
 ## Scenarios
 
@@ -48,7 +52,7 @@ A scenario is a chain: who, which event, and optional numbers (boost under 20, y
 
 ## Deploy on Vercel
 
-Set `APP_URL` to the production origin, plus `AUTH_SECRET`, `STEAM_API_KEY`, `DATABASE_URL`, and the four `R2_` variables. Create the R2 bucket and an API token with object read and write.
+Set `APP_URL` to the production origin, plus `AUTH_SECRET`, `STEAM_API_KEY`, `DATABASE_URL`, and the four `R2_` variables. Create the R2 bucket and an API token with object read and write. The production build publishes the listener files the Settings download fetches.
 
 ## What the review is looking at
 

@@ -2,10 +2,12 @@
   "name": "replay-lab",
   "private": true,
   "scripts": {
+    "predev": "node scripts/build-listener.mjs",
     "dev": "next dev",
+    "prebuild": "node scripts/build-listener.mjs",
     "build": "next build",
     "start": "next start",
-    "test": "tsx --test lib/replay/header.test.ts lib/replay/frames.test.ts lib/replay/ndarray.test.ts lib/coaching/report.test.ts lib/scenarios/match.test.ts",
+    "test": "tsx --test lib/replay/header.test.ts lib/replay/frames.test.ts lib/replay/ndarray.test.ts lib/coaching/report.test.ts lib/scenarios/match.test.ts lib/listener-script.test.ts",
     "helper": "tsx helper/cli.ts",
     "typecheck": "tsc --noEmit"
   },
@@ -26,6 +28,7 @@
     "@types/node": "^26.6.6",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
+    "esbuild": "^0.28.2",
     "postcss": "^8.5.32",
     "tailwindcss": "^4.3.5",
     "tsx": "^4.23.15",

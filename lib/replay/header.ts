@@ -14,7 +14,7 @@ type Prop =
 
 const REGULATION_SECONDS = 300;
 
-export function parseReplayHeader(buffer: Buffer): HeaderGame {
+export function parseReplayHeader(buffer: Uint8Array): HeaderGame {
   const reader = new ReplayReader(buffer);
   const headerSize = reader.i32();
   if (headerSize < 16 || headerSize > buffer.length) {

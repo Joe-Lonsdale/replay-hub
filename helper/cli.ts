@@ -3,10 +3,11 @@ import { access, mkdir, readFile, readdir, stat, writeFile } from "node:fs/promi
 import { watch } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import { buildReplay } from "../lib/replay/frames";
 import { parseReplayHeader } from "../lib/replay/header";
 import type { StoredReplay } from "../lib/replay/types";
-import { samplesFromReplay } from "./samples";
+import { samplesFromReplay, wasmByteLength } from "./samples";
 
 interface Config {
   apiBase: string;
@@ -29,10 +30,20 @@ interface UploadResponse {
 const args = process.argv.slice(2);
 const command = args[0];
 
-main().catch((error: unknown) => {
-  console.error(error instanceof Error ? error.message : error);
-  process.exitCode = 1;
-});
+export { wasmByteLength as listenerWasmBytes };
+
+if (startedDirectly()) {
+  main().catch((error: unknown) => {
+    console.error(error instanceof Error ? error.message : error);
+    process.exitCode = 1;
+  });
+}
+
+function startedDirectly(): boolean {
+  const entry = process.argv[1];
+  if (!entry) return false;
+  return import.meta.url === pathToFileURL(entry).href;
+}
 
 async function main() {
   if (!command || command === "help" || command === "--help") {
@@ -158,16 +169,18 @@ async function uploadFile(config: Config, file: string, force = false) {
 }
 
 function printHelp() {
-  console.log(`Replay Lab helper
+  console.log(`Replay Lab listener
 
+  setup --token rpl_... --url https://your-site
+  scan
+  watch
+  upload path\\to\\file.replay
+  scan --force
+
+Download it from Settings, or from this project:
   npm run helper -- setup --token rpl_... --url http://localhost:3000
-  npm run helper -- scan
-  npm run helper -- watch
-  npm run helper -- upload path\\to\\file.replay
-  npm run helper -- scan --force
 
-Create the token in Settings after signing in with Steam.
-The helper watches Documents\\My Games\\Rocket League\\TAGame\\Demos.
+It watches Documents\\My Games\\Rocket League\\TAGame\\Demos.
 scan --force rebuilds stats for replays already uploaded, including the event log used by scenarios.`);
 }
 
