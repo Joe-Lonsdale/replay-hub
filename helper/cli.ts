@@ -5,6 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { buildReplay } from "../lib/replay/frames";
+import { packReplay } from "../lib/replay/pack";
 import { parseReplayHeader } from "../lib/replay/header";
 import type { StoredReplay } from "../lib/replay/types";
 import { samplesFromReplay, wasmByteLength } from "./samples";
@@ -141,7 +142,7 @@ async function uploadFile(config: Config, file: string, force = false) {
       authorization: `Bearer ${config.token}`,
       "content-type": "application/json",
     },
-    body: JSON.stringify({ sha256, byteLength: buffer.length, replay }),
+    body: JSON.stringify({ sha256, byteLength: buffer.length, replay: packReplay(replay) }),
   });
   if (!response.ok) {
     throw new Error(`${path.basename(file)}: ${response.status} ${await response.text()}`);

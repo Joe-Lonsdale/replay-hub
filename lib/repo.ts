@@ -3,6 +3,7 @@ import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { getDatabase, type Database } from "./db";
 import { blankScenario, parseDefinition } from "./scenarios/catalog";
 import type { ScenarioDefinition } from "./scenarios/types";
+import { packReplay, unpackReplay } from "./replay/pack";
 import type { StoredReplay } from "./replay/types";
 import type { ApiToken, ReplayRow, User } from "./types";
 
@@ -128,7 +129,7 @@ export async function insertReplay(input: {
       input.storageKey,
       input.storageStatus,
       input.byteLength,
-      JSON.stringify(input.replay),
+      JSON.stringify(packReplay(input.replay)),
     ],
   );
   const saved = await getReplay(input.userId, id);
@@ -184,7 +185,7 @@ export async function replaceReplayAnalysis(
     [
       userId,
       id,
-      JSON.stringify(replay),
+      JSON.stringify(packReplay(replay)),
       byteLength,
       replay.playedAt,
       replay.playlist,
@@ -332,8 +333,35 @@ function mapReplay(row: ReplaySql): ReplayRow {
     storageKey: row.storage_key,
     storageStatus: row.storage_status,
     byteLength: row.byte_length,
-    analysis: typeof row.analysis === "string" ? (JSON.parse(row.analysis) as StoredReplay) : (row.analysis as StoredReplay),
+    analysis: unpackReplay(typeof row.analysis === "string" ? JSON.parse(row.analysis) : row.analysis) ?? emptyAnalysis(),
     createdAt: asIso(row.created_at) ?? "",
+  };
+}
+
+function emptyAnalysis(): StoredReplay {
+  return {
+    parserVersion: 1,
+    depth: "header",
+    matchGuid: null,
+    name: "Replay",
+    mapName: "",
+    mapLabel: "Unknown",
+    playedAt: null,
+    playlist: "unknown",
+    matchType: null,
+    gameType: "",
+    buildVersion: null,
+    teamSize: 0,
+    durationSeconds: 0,
+    overtime: false,
+    forfeit: false,
+    noContest: false,
+    countable: false,
+    team0Score: 0,
+    team1Score: 0,
+    players: [],
+    goals: [],
+    warnings: ["Stored stats could not be read."],
   };
 }
 

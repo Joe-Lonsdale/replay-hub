@@ -7,7 +7,7 @@
     "prebuild": "node scripts/build-listener.mjs",
     "build": "next build",
     "start": "next start",
-    "test": "tsx --test lib/replay/header.test.ts lib/replay/frames.test.ts lib/replay/ndarray.test.ts lib/coaching/report.test.ts lib/scenarios/match.test.ts lib/listener-script.test.ts",
+    "test": "tsx --test lib/replay/header.test.ts lib/replay/frames.test.ts lib/replay/ndarray.test.ts lib/coaching/report.test.ts lib/scenarios/match.test.ts lib/listener-script.test.ts lib/replay/pack.test.ts",
     "helper": "tsx helper/cli.ts",
     "typecheck": "tsc --noEmit"
   },

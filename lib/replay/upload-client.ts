@@ -1,4 +1,5 @@
 import { parseReplayBytes, sha256Hex } from "./browser-parse";
+import { packReplay } from "./pack";
 
 interface UploadResponse {
   id: string;
@@ -25,7 +26,7 @@ export async function uploadReplayFile(file: File, onStatus: (status: string) =>
   const response = await fetch("/api/replays", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ sha256, byteLength: bytes.byteLength, replay }),
+    body: JSON.stringify({ sha256, byteLength: bytes.byteLength, replay: packReplay(replay) }),
   });
   const body = (await response.json().catch(() => null)) as UploadResponse | null;
   if (!response.ok || !body?.id) {

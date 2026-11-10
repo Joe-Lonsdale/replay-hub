@@ -10,7 +10,7 @@ export async function POST(request: Request) {
   if (!user) return Response.json({ error: "Sign in or send a helper token." }, { status: 401 });
 
   const raw = await request.text();
-  if (raw.length > 1_500_000) {
+  if (raw.length > 4_000_000) {
     return Response.json({ error: "Stats payload is too large." }, { status: 413 });
   }
   let parsed: unknown;

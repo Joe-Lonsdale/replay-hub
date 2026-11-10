@@ -1,4 +1,5 @@
 import { publicUrl, r2Configured } from "./env";
+import { unpackReplay } from "./replay/pack";
 import type { StoredReplay } from "./replay/types";
 import { presignPut, replayObjectKey } from "./storage";
 
@@ -22,12 +23,12 @@ export function parseUpload(value: unknown): UploadBody | null {
   if (typeof body.byteLength !== "number" || body.byteLength < 1000 || body.byteLength > 20_000_000) {
     return null;
   }
-  if (!body.replay || !Array.isArray(body.replay.players) || !Array.isArray(body.replay.goals)) return null;
-  if (typeof body.replay.playlist !== "string" || typeof body.replay.mapLabel !== "string") return null;
+  const replay = unpackReplay(body.replay);
+  if (!replay || typeof replay.playlist !== "string" || typeof replay.mapLabel !== "string") return null;
   return {
     sha256: body.sha256.toLowerCase(),
     byteLength: body.byteLength,
-    replay: body.replay,
+    replay,
   };
 }
 
