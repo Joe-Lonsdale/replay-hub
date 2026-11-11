@@ -225,6 +225,17 @@ export async function listReplays(userId: string, playlist: string | null, limit
   return rows.map(mapReplay);
 }
 
+export async function listReplayMatchGuids(userId: string): Promise<Set<string>> {
+  const database = await db();
+  const rows = await database.query<{ analysis: unknown }>(`select analysis from replays where user_id = $1`, [userId]);
+  const guids = new Set<string>();
+  for (const row of rows) {
+    const replay = unpackReplay(typeof row.analysis === "string" ? JSON.parse(row.analysis) : row.analysis);
+    if (replay?.matchGuid) guids.add(replay.matchGuid);
+  }
+  return guids;
+}
+
 export async function setReplayStorage(
   userId: string,
   id: string,

@@ -39,8 +39,8 @@ export async function removeReplay(formData: FormData) {
 export async function syncRlapiReplays(formData: FormData) {
   const user = await currentUser();
   if (!user) redirect("/");
-  const requested = Number(formData.get("limit") ?? 10);
-  const limit = Number.isFinite(requested) ? Math.min(25, Math.max(1, Math.round(requested))) : 10;
+  const requested = Number(formData.get("limit") ?? 25);
+  const limit = Number.isFinite(requested) ? Math.min(100, Math.max(1, Math.round(requested))) : 25;
 
   let target = "/settings";
   try {

@@ -103,14 +103,14 @@ export default async function SettingsPage({
         ) : null}
         <form action={syncRlapiReplays} className="mt-4 flex flex-wrap items-end gap-3">
           <label htmlFor="rlapiLimit" className="grid gap-1 text-sm">
-            Last replays
+            Unsynced replays
             <input
               id="rlapiLimit"
               name="limit"
               type="number"
               min={1}
-              max={25}
-              defaultValue={10}
+              max={100}
+              defaultValue={25}
               className="w-28 border border-line px-3 py-2"
             />
           </label>
