@@ -57,6 +57,26 @@ create table if not exists scenarios (
 );
 
 create index if not exists scenarios_user_idx on scenarios (user_id, updated_at desc);
+
+create table if not exists rlapi_device_auth (
+  user_id text primary key references users(id) on delete cascade,
+  device_code text not null,
+  user_code text not null,
+  verification_uri text not null,
+  interval_seconds integer not null,
+  expires_at timestamptz not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists rlapi_connections (
+  user_id text primary key references users(id) on delete cascade,
+  epic_account_id text not null,
+  display_name text not null,
+  refresh_token_ciphertext text not null,
+  refresh_expires_at timestamptz,
+  connected_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
 `;
 
 const globalForDb = globalThis as { replayLabDb?: Promise<Database> };

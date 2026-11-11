@@ -12,7 +12,7 @@ export const sessionCookie = {
   },
 };
 
-function secret(): Uint8Array {
+export function authSecret(): Uint8Array {
   const value = process.env.AUTH_SECRET;
   if (value) return new TextEncoder().encode(value);
   if (process.env.NODE_ENV === "production") {
@@ -26,13 +26,13 @@ export async function signSession(steamId: string): Promise<string> {
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("30d")
-    .sign(secret());
+    .sign(authSecret());
 }
 
 export async function readSession(token: string | undefined): Promise<string | null> {
   if (!token) return null;
   try {
-    const { payload } = await jwtVerify(token, secret());
+    const { payload } = await jwtVerify(token, authSecret());
     return typeof payload.sub === "string" ? payload.sub : null;
   } catch {
     return null;

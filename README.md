@@ -48,26 +48,7 @@ Manual uploads of a few MB work without extra storage setup. Larger ones go stra
 
 ## RLAPI sync
 
-Settings also has an optional server-side RLAPI sync button. It asks PsyNet for recent match history, downloads the replay URLs it returns, then runs those replay bytes through the same parser and storage path as normal uploads.
-
-Configure either EOS auth:
-
-```bash
-RLAPI_PLATFORM=Epic
-RLAPI_ACCOUNT_ID=your-epic-account-id
-RLAPI_EOS_TOKEN=...
-RLAPI_EPIC_ACCOUNT_ID=your-epic-account-id
-RLAPI_ACCOUNT_NAME=your-name
-```
-
-or an already-authenticated PsyNet session:
-
-```bash
-RLAPI_PLAYER_ID=Epic|your-epic-account-id|0
-RLAPI_WS_URL=wss://...
-RLAPI_PSY_TOKEN=...
-RLAPI_SESSION_ID=...
-```
+Settings also has an optional server-side RLAPI sync button. Each user connects their Epic account with a device code, then the app asks PsyNet for that user's recent match history, downloads the replay URLs it returns, and runs those replay bytes through the same parser and storage path as normal uploads.
 
 RLAPI is reverse engineered. The bundled game version, feature set, and build secret may need overrides after Rocket League updates: `RLAPI_GAME_VERSION`, `RLAPI_FEATURE_SET`, `RLAPI_BUILD_SECRET`, and `RLAPI_BUILD_ID`.
 

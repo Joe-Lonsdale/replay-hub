@@ -5,7 +5,7 @@ import { blankScenario, parseDefinition } from "./scenarios/catalog";
 import type { ScenarioDefinition } from "./scenarios/types";
 import { packReplay, unpackReplay } from "./replay/pack";
 import type { StoredReplay } from "./replay/types";
-import type { ApiToken, ReplayRow, User } from "./types";
+import type { ApiToken, ReplayRow, RlApiConnection, RlApiDeviceAuth, User } from "./types";
 
 async function db(): Promise<Database> {
   return getDatabase();
@@ -91,6 +91,73 @@ export async function findUserByToken(secret: string): Promise<User | null> {
   if (!row) return null;
   await database.query(`update api_tokens set last_used_at = now() where id = $1`, [row.token_id]);
   return mapUser(row);
+}
+
+export async function saveRlApiDeviceAuth(input: RlApiDeviceAuth): Promise<void> {
+  const database = await db();
+  await database.query(
+    `insert into rlapi_device_auth (
+      user_id, device_code, user_code, verification_uri, interval_seconds, expires_at
+    ) values ($1, $2, $3, $4, $5, $6)
+    on conflict (user_id) do update set
+      device_code = excluded.device_code,
+      user_code = excluded.user_code,
+      verification_uri = excluded.verification_uri,
+      interval_seconds = excluded.interval_seconds,
+      expires_at = excluded.expires_at,
+      created_at = now()`,
+    [input.userId, input.deviceCode, input.userCode, input.verificationUri, input.intervalSeconds, input.expiresAt],
+  );
+}
+
+export async function getRlApiDeviceAuth(userId: string): Promise<RlApiDeviceAuth | null> {
+  const database = await db();
+  const rows = await database.query<RlApiDeviceAuthSql>(`select * from rlapi_device_auth where user_id = $1`, [userId]);
+  return rows[0] ? mapRlApiDeviceAuth(rows[0]) : null;
+}
+
+export async function deleteRlApiDeviceAuth(userId: string): Promise<void> {
+  const database = await db();
+  await database.query(`delete from rlapi_device_auth where user_id = $1`, [userId]);
+}
+
+export async function saveRlApiConnection(input: {
+  userId: string;
+  epicAccountId: string;
+  displayName: string;
+  refreshTokenCiphertext: string;
+  refreshExpiresAt: string | null;
+}): Promise<void> {
+  const database = await db();
+  await database.query(
+    `insert into rlapi_connections (
+      user_id, epic_account_id, display_name, refresh_token_ciphertext, refresh_expires_at
+    ) values ($1, $2, $3, $4, $5)
+    on conflict (user_id) do update set
+      epic_account_id = excluded.epic_account_id,
+      display_name = excluded.display_name,
+      refresh_token_ciphertext = excluded.refresh_token_ciphertext,
+      refresh_expires_at = excluded.refresh_expires_at,
+      updated_at = now()`,
+    [
+      input.userId,
+      input.epicAccountId,
+      input.displayName,
+      input.refreshTokenCiphertext,
+      input.refreshExpiresAt,
+    ],
+  );
+}
+
+export async function getRlApiConnection(userId: string): Promise<RlApiConnection | null> {
+  const database = await db();
+  const rows = await database.query<RlApiConnectionSql>(`select * from rlapi_connections where user_id = $1`, [userId]);
+  return rows[0] ? mapRlApiConnection(rows[0]) : null;
+}
+
+export async function deleteRlApiConnection(userId: string): Promise<void> {
+  const database = await db();
+  await database.query(`delete from rlapi_connections where user_id = $1`, [userId]);
 }
 
 export async function findReplayByHash(userId: string, sha256: string): Promise<ReplayRow | null> {
@@ -294,6 +361,25 @@ interface TokenRow {
   last_used_at: unknown;
 }
 
+interface RlApiDeviceAuthSql {
+  user_id: string;
+  device_code: string;
+  user_code: string;
+  verification_uri: string;
+  interval_seconds: number;
+  expires_at: unknown;
+}
+
+interface RlApiConnectionSql {
+  user_id: string;
+  epic_account_id: string;
+  display_name: string;
+  refresh_token_ciphertext: string;
+  refresh_expires_at: unknown;
+  connected_at: unknown;
+  updated_at: unknown;
+}
+
 interface ReplaySql {
   id: string;
   user_id: string;
@@ -317,6 +403,29 @@ function mapUser(row: UserRow): User {
     avatarUrl: row.avatar_url,
     profileUrl: row.profile_url,
     rlName: row.rl_name,
+  };
+}
+
+function mapRlApiDeviceAuth(row: RlApiDeviceAuthSql): RlApiDeviceAuth {
+  return {
+    userId: row.user_id,
+    deviceCode: row.device_code,
+    userCode: row.user_code,
+    verificationUri: row.verification_uri,
+    intervalSeconds: row.interval_seconds,
+    expiresAt: asIso(row.expires_at) ?? "",
+  };
+}
+
+function mapRlApiConnection(row: RlApiConnectionSql): RlApiConnection {
+  return {
+    userId: row.user_id,
+    epicAccountId: row.epic_account_id,
+    displayName: row.display_name,
+    refreshTokenCiphertext: row.refresh_token_ciphertext,
+    refreshExpiresAt: asIso(row.refresh_expires_at),
+    connectedAt: asIso(row.connected_at) ?? "",
+    updatedAt: asIso(row.updated_at) ?? "",
   };
 }
 

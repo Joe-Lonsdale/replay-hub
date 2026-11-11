@@ -29,3 +29,22 @@ export interface ApiToken {
   createdAt: string;
   lastUsedAt: string | null;
 }
+
+export interface RlApiDeviceAuth {
+  userId: string;
+  deviceCode: string;
+  userCode: string;
+  verificationUri: string;
+  intervalSeconds: number;
+  expiresAt: string;
+}
+
+export interface RlApiConnection {
+  userId: string;
+  epicAccountId: string;
+  displayName: string;
+  refreshTokenCiphertext: string;
+  refreshExpiresAt: string | null;
+  connectedAt: string;
+  updatedAt: string;
+}
