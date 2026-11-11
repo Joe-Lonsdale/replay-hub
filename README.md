@@ -46,6 +46,31 @@ Parsing happens on your PC. Vercel receives the stats JSON, and the `.replay` go
 
 Manual uploads of a few MB work without extra storage setup. Larger ones go straight to R2, which needs a bucket CORS rule: origin is the site URL, method `PUT`, allowed header `content-type`. The listener does not use that rule.
 
+## RLAPI sync
+
+Settings also has an optional server-side RLAPI sync button. It asks PsyNet for recent match history, downloads the replay URLs it returns, then runs those replay bytes through the same parser and storage path as normal uploads.
+
+Configure either EOS auth:
+
+```bash
+RLAPI_PLATFORM=Epic
+RLAPI_ACCOUNT_ID=your-epic-account-id
+RLAPI_EOS_TOKEN=...
+RLAPI_EPIC_ACCOUNT_ID=your-epic-account-id
+RLAPI_ACCOUNT_NAME=your-name
+```
+
+or an already-authenticated PsyNet session:
+
+```bash
+RLAPI_PLAYER_ID=Epic|your-epic-account-id|0
+RLAPI_WS_URL=wss://...
+RLAPI_PSY_TOKEN=...
+RLAPI_SESSION_ID=...
+```
+
+RLAPI is reverse engineered. The bundled game version, feature set, and build secret may need overrides after Rocket League updates: `RLAPI_GAME_VERSION`, `RLAPI_FEATURE_SET`, `RLAPI_BUILD_SECRET`, and `RLAPI_BUILD_ID`.
+
 ## Scenarios
 
 A scenario is a chain: who, which event, and optional numbers (boost under 20, you in your own third, a teammate in the opponents' third, within 1.5 seconds, the next touch). Every time the chain happens, the page also splits the follow-up: who touches the ball next, whether they score inside the window, and which team scores next in the game. Older uploads need `scan --force` before they show up there.
