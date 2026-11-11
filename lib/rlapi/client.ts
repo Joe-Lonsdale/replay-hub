@@ -13,6 +13,11 @@ import {
   playerId,
 } from "./protocol";
 
+const EGS_USER_AGENT = "UELauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit";
+const EOS_DEPLOYMENT_ID = "da32ae9c12ae40e8a112c52e1f17f3ba";
+const EOS_CLIENT_ID = "xyza7891p5D7s9R6Gm6moTHWGloerp7B";
+const EOS_SECRET = "Knh18du4NVlFs+3uQ+ZPpDCVto0WYf4yXP8+OcwVt1o";
+
 export interface RlApiMatchEntry {
   ReplayUrl?: string;
   Match?: {
@@ -23,6 +28,22 @@ export interface RlApiMatchEntry {
     Team0Score?: number;
     Team1Score?: number;
   };
+}
+
+export interface EpicDeviceAuthorization {
+  deviceCode: string;
+  userCode: string;
+  verificationUri: string;
+  expiresIn: number;
+  interval: number;
+}
+
+export interface EosToken {
+  accessToken: string;
+  refreshToken: string;
+  expiresAt: string | null;
+  refreshExpiresAt: string | null;
+  accountId: string;
 }
 
 export interface RlApiStatus {
@@ -67,6 +88,74 @@ interface AuthPlayerResponse {
 
 let requestCounter = 0;
 
+export async function startEpicDeviceAuthorization(): Promise<EpicDeviceAuthorization> {
+  const response = await fetch("https://api.epicgames.dev/epic/oauth/v2/deviceAuthorization", {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      "user-agent": EGS_USER_AGENT,
+    },
+    body: new URLSearchParams({ client_id: EOS_CLIENT_ID }),
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(epicError(response.status, body));
+  return {
+    deviceCode: String(body.device_code ?? ""),
+    userCode: String(body.user_code ?? ""),
+    verificationUri: String(body.verification_uri ?? ""),
+    expiresIn: Number(body.expires_in ?? 0),
+    interval: Number(body.interval ?? 5),
+  };
+}
+
+export async function finishEpicDeviceAuthorization(deviceCode: string): Promise<EosToken> {
+  return requestEosToken({
+    grant_type: "device_code",
+    device_code: deviceCode,
+  });
+}
+
+export async function refreshEpicEosToken(refreshToken: string): Promise<EosToken> {
+  return requestEosToken({
+    grant_type: "refresh_token",
+    refresh_token: refreshToken,
+  });
+}
+
+export async function getMatchHistoryForEpicAccount(input: {
+  eosToken: string;
+  epicAccountId: string;
+  accountName: string;
+  limit: number;
+}): Promise<RlApiMatchEntry[]> {
+  const gameVersion = process.env.RLAPI_GAME_VERSION || RLAPI_DEFAULT_GAME_VERSION;
+  const config: RlApiAuthConfig = {
+    mode: "auth",
+    playerId: playerId("Epic", input.epicAccountId),
+    gameVersion,
+    buildId: process.env.RLAPI_BUILD_ID || decodeBuildId(gameVersion),
+    environment: process.env.RLAPI_ENVIRONMENT || "Prod",
+    baseUrl: (process.env.RLAPI_BASE_URL || RLAPI_DEFAULT_BASE_URL).replace(/\/$/, ""),
+    featureSet: process.env.RLAPI_FEATURE_SET || RLAPI_DEFAULT_FEATURE_SET,
+    buildSecret: process.env.RLAPI_BUILD_SECRET || RLAPI_DEFAULT_BUILD_SECRET,
+    eosToken: input.eosToken,
+    epicAccountId: input.epicAccountId,
+    accountName: input.accountName,
+    platform: "Epic",
+    accountId: input.epicAccountId,
+  };
+  const session = await authenticate(config);
+  const rpc = await PsyNetSocket.open(session);
+  try {
+    const result = await rpc.request<{ Matches?: RlApiMatchEntry[] }>("Matches/GetMatchHistory v1", {
+      PlayerID: config.playerId,
+    });
+    return (result.Matches ?? []).slice(0, input.limit);
+  } finally {
+    rpc.close();
+  }
+}
+
 export function rlapiStatus(): RlApiStatus {
   const missing = missingConfig();
   if (missing.length === 0) {
@@ -101,6 +190,32 @@ export async function downloadReplay(url: string): Promise<Buffer> {
     throw new Error(`Replay download size looked wrong (${body.length} bytes).`);
   }
   return body;
+}
+
+async function requestEosToken(params: Record<string, string>): Promise<EosToken> {
+  const form = new URLSearchParams({
+    ...params,
+    deployment_id: EOS_DEPLOYMENT_ID,
+    scope: "basic_profile",
+  });
+  const response = await fetch("https://api.epicgames.dev/epic/oauth/v2/token", {
+    method: "POST",
+    headers: {
+      "content-type": "application/x-www-form-urlencoded",
+      authorization: `Basic ${Buffer.from(`${EOS_CLIENT_ID}:${EOS_SECRET}`).toString("base64")}`,
+      "user-agent": EGS_USER_AGENT,
+    },
+    body: form,
+  });
+  const body = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(epicError(response.status, body));
+  return {
+    accessToken: String(body.access_token ?? ""),
+    refreshToken: String(body.refresh_token ?? ""),
+    expiresAt: typeof body.expires_at === "string" ? body.expires_at : null,
+    refreshExpiresAt: typeof body.refresh_expires_at === "string" ? body.refresh_expires_at : null,
+    accountId: String(body.selected_account_id || body.account_id || ""),
+  };
 }
 
 async function authenticate(config: RlApiAuthConfig): Promise<RlApiSessionConfig> {
@@ -330,4 +445,14 @@ function nextRequestId(): string {
 
 function formatPsyError(error: { Type?: string; Message?: string }): string {
   return [error.Type, error.Message].filter(Boolean).join(": ") || "RLAPI returned an error.";
+}
+
+function epicError(status: number, body: unknown): string {
+  if (body && typeof body === "object") {
+    const error = body as { errorCode?: string; errorMessage?: string; error?: string; error_description?: string };
+    const message = error.errorMessage || error.error_description || error.error;
+    if (message) return `Epic auth failed (${status}): ${message}`;
+    if (error.errorCode) return `Epic auth failed (${status}): ${error.errorCode}`;
+  }
+  return `Epic auth failed (${status}).`;
 }

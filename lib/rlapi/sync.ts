@@ -1,7 +1,9 @@
 import "server-only";
 
+import { decryptSecret, encryptSecret } from "@/lib/crypto";
 import { importReplayBytes } from "@/lib/replay/import-server";
-import { downloadReplay, getMatchHistory } from "./client";
+import { getRlApiConnection, saveRlApiConnection } from "@/lib/repo";
+import { downloadReplay, getMatchHistoryForEpicAccount, refreshEpicEosToken } from "./client";
 
 export interface RlApiSyncResult {
   seen: number;
@@ -13,7 +15,27 @@ export interface RlApiSyncResult {
 }
 
 export async function syncRlapiReplays(userId: string, limit: number): Promise<RlApiSyncResult> {
-  const matches = await getMatchHistory(limit);
+  const connection = await getRlApiConnection(userId);
+  if (!connection) throw new Error("Connect your Epic/RLAPI account before syncing replays.");
+
+  const token = await refreshEpicEosToken(decryptSecret(connection.refreshTokenCiphertext));
+  if (!token.accessToken || !token.refreshToken || !token.accountId) {
+    throw new Error("Epic auth did not return a usable EOS token.");
+  }
+  await saveRlApiConnection({
+    userId,
+    epicAccountId: token.accountId,
+    displayName: connection.displayName,
+    refreshTokenCiphertext: encryptSecret(token.refreshToken),
+    refreshExpiresAt: token.refreshExpiresAt,
+  });
+
+  const matches = await getMatchHistoryForEpicAccount({
+    eosToken: token.accessToken,
+    epicAccountId: token.accountId,
+    accountName: connection.displayName,
+    limit,
+  });
   const result: RlApiSyncResult = {
     seen: matches.length,
     imported: 0,

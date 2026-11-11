@@ -1,7 +1,13 @@
-import { saveRlName, syncRlapiReplays } from "@/lib/actions";
+import {
+  disconnectRlapi,
+  finishRlapiConnect,
+  saveRlName,
+  startRlapiConnect,
+  syncRlapiReplays,
+} from "@/lib/actions";
 import { TokenPanel } from "@/components/token-panel";
 import { serviceStatus } from "@/lib/env";
-import { rlapiStatus } from "@/lib/rlapi/client";
+import { getRlApiConnection, getRlApiDeviceAuth } from "@/lib/repo";
 import { requireUser } from "@/lib/session";
 
 export default async function SettingsPage({
@@ -22,7 +28,9 @@ export default async function SettingsPage({
   const params = await searchParams;
   const { saved } = params;
   const status = serviceStatus();
-  const rlapi = rlapiStatus();
+  const rlapiConnection = await getRlApiConnection(user.id);
+  const pendingRlapi = await getRlApiDeviceAuth(user.id);
+  const pendingExpired = pendingRlapi ? new Date(pendingRlapi.expiresAt).getTime() < Date.now() : false;
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -59,9 +67,40 @@ export default async function SettingsPage({
       <section className="border border-line bg-panel p-4">
         <h2 className="text-lg tracking-tight">RLAPI replay sync</h2>
         <p className="mt-1 text-sm text-muted">
-          Pulls recent match history for the configured RLAPI account, downloads replay files, and saves them to your
-          Replay Lab ledger.
+          Connect Epic once, then pull recent match history from RLAPI and save those replay files to your ledger.
         </p>
+        {rlapiConnection ? (
+          <div className="mt-4 border border-line p-3 text-sm">
+            <p>
+              Connected as <span className="font-mono">{rlapiConnection.displayName}</span>.
+            </p>
+            <p className="mt-1 text-xs text-muted">Epic account {rlapiConnection.epicAccountId}</p>
+            <form action={disconnectRlapi} className="mt-3">
+              <button type="submit" className="border border-line px-3 py-2 text-xs text-muted">
+                Disconnect
+              </button>
+            </form>
+          </div>
+        ) : (
+          <form action={startRlapiConnect} className="mt-4">
+            <button type="submit" className="bg-ink px-3 py-2 text-bg">
+              Connect Epic account
+            </button>
+          </form>
+        )}
+        {pendingRlapi && !rlapiConnection ? (
+          <div className="mt-4 border border-line p-3 text-sm">
+            <p>Open Epic and enter this code:</p>
+            <p className="mt-2 font-mono text-2xl text-gold">{pendingRlapi.userCode}</p>
+            <p className="mt-2 break-all text-muted">{pendingRlapi.verificationUri}</p>
+            <form action={finishRlapiConnect} className="mt-3">
+              <button type="submit" disabled={pendingExpired} className="bg-gold px-3 py-2 text-bg disabled:opacity-50">
+                I authorized Epic
+              </button>
+            </form>
+            {pendingExpired ? <p className="mt-2 text-xs text-loss">This code expired. Start connection again.</p> : null}
+          </div>
+        ) : null}
         <form action={syncRlapiReplays} className="mt-4 flex flex-wrap items-end gap-3">
           <label htmlFor="rlapiLimit" className="grid gap-1 text-sm">
             Last replays
@@ -75,15 +114,13 @@ export default async function SettingsPage({
               className="w-28 border border-line px-3 py-2"
             />
           </label>
-          <button type="submit" disabled={!rlapi.configured} className="bg-ink px-3 py-2 text-bg disabled:opacity-50">
+          <button type="submit" disabled={!rlapiConnection} className="bg-ink px-3 py-2 text-bg disabled:opacity-50">
             Sync RLAPI replays
           </button>
         </form>
-        {rlapi.configured ? (
-          <p className="mt-3 text-xs text-muted">Configured with {rlapi.mode === "session" ? "session" : "EOS auth"} credentials.</p>
-        ) : (
-          <p className="mt-3 text-xs text-loss">Missing RLAPI env: {rlapi.missing.join(", ")}.</p>
-        )}
+        {!rlapiConnection ? <p className="mt-3 text-xs text-muted">Connect Epic before syncing replays.</p> : null}
+        {params.rlapi === "connected" ? <p className="mt-3 text-sm text-win">Epic account connected.</p> : null}
+        {params.rlapi === "disconnected" ? <p className="mt-3 text-sm text-win">Epic account disconnected.</p> : null}
         {params.rlapi === "synced" ? (
           <p className="mt-3 text-sm text-win">
             RLAPI sync checked {params.seen ?? 0}, imported {params.imported ?? 0}, refreshed {params.duplicates ?? 0}
