@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   outputFileTracingRoot: path.dirname(fileURLToPath(import.meta.url)),
-  serverExternalPackages: ["@electric-sql/pglite"],
+  serverExternalPackages: ["@electric-sql/pglite", "@rlrml/subtr-actor"],
 };
 
 export default nextConfig;

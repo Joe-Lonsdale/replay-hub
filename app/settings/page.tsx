@@ -1,16 +1,28 @@
-import { saveRlName } from "@/lib/actions";
+import { saveRlName, syncRlapiReplays } from "@/lib/actions";
 import { TokenPanel } from "@/components/token-panel";
 import { serviceStatus } from "@/lib/env";
+import { rlapiStatus } from "@/lib/rlapi/client";
 import { requireUser } from "@/lib/session";
 
 export default async function SettingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ saved?: string }>;
+  searchParams: Promise<{
+    saved?: string;
+    rlapi?: string;
+    rlapi_error?: string;
+    seen?: string;
+    imported?: string;
+    duplicates?: string;
+    failed?: string;
+    skipped?: string;
+  }>;
 }) {
   const user = await requireUser();
-  const { saved } = await searchParams;
+  const params = await searchParams;
+  const { saved } = params;
   const status = serviceStatus();
+  const rlapi = rlapiStatus();
 
   return (
     <div className="max-w-3xl space-y-8">
@@ -43,6 +55,44 @@ export default async function SettingsPage({
       </form>
 
       <TokenPanel appUrl={status.appUrl} />
+
+      <section className="border border-line bg-panel p-4">
+        <h2 className="text-lg tracking-tight">RLAPI replay sync</h2>
+        <p className="mt-1 text-sm text-muted">
+          Pulls recent match history for the configured RLAPI account, downloads replay files, and saves them to your
+          Replay Lab ledger.
+        </p>
+        <form action={syncRlapiReplays} className="mt-4 flex flex-wrap items-end gap-3">
+          <label htmlFor="rlapiLimit" className="grid gap-1 text-sm">
+            Last replays
+            <input
+              id="rlapiLimit"
+              name="limit"
+              type="number"
+              min={1}
+              max={25}
+              defaultValue={10}
+              className="w-28 border border-line px-3 py-2"
+            />
+          </label>
+          <button type="submit" disabled={!rlapi.configured} className="bg-ink px-3 py-2 text-bg disabled:opacity-50">
+            Sync RLAPI replays
+          </button>
+        </form>
+        {rlapi.configured ? (
+          <p className="mt-3 text-xs text-muted">Configured with {rlapi.mode === "session" ? "session" : "EOS auth"} credentials.</p>
+        ) : (
+          <p className="mt-3 text-xs text-loss">Missing RLAPI env: {rlapi.missing.join(", ")}.</p>
+        )}
+        {params.rlapi === "synced" ? (
+          <p className="mt-3 text-sm text-win">
+            RLAPI sync checked {params.seen ?? 0}, imported {params.imported ?? 0}, refreshed {params.duplicates ?? 0}
+            {params.skipped && params.skipped !== "0" ? `, skipped ${params.skipped}` : ""}
+            {params.failed && params.failed !== "0" ? `, failed ${params.failed}` : ""}.
+          </p>
+        ) : null}
+        {params.rlapi_error ? <p className="mt-3 text-sm text-loss">{params.rlapi_error}</p> : null}
+      </section>
 
       <section className="border border-line p-4 text-sm">
         <h2 className="text-lg tracking-tight">Where things live</h2>
