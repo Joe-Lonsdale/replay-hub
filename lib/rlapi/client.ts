@@ -126,7 +126,6 @@ export async function getMatchHistoryForEpicAccount(input: {
   eosToken: string;
   epicAccountId: string;
   accountName: string;
-  limit: number;
 }): Promise<RlApiMatchEntry[]> {
   const gameVersion = process.env.RLAPI_GAME_VERSION || RLAPI_DEFAULT_GAME_VERSION;
   const config: RlApiAuthConfig = {
@@ -150,7 +149,7 @@ export async function getMatchHistoryForEpicAccount(input: {
     const result = await rpc.request<{ Matches?: RlApiMatchEntry[] }>("Matches/GetMatchHistory v1", {
       PlayerID: config.playerId,
     });
-    return (result.Matches ?? []).slice(0, input.limit);
+    return result.Matches ?? [];
   } finally {
     rpc.close();
   }
